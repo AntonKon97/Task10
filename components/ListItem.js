@@ -22,6 +22,12 @@ function Item({ item }) {
 
   return (
     <View style={styles.item}>
+      <Image
+        style={styles.image}
+        source={
+          item.image ? { uri: item.image } : require("../assets/no-image.png")
+        }
+      />
       <Pressable disabled={!item.audio} onPress={() => playSound(item.audio)}>
         <View style={styles.iconContainer}>
           <Ionicons
@@ -95,7 +101,9 @@ function getStyles(colors) {
     },
     image: {
       width: 60,
-      aspectRatio: 1,
+      height: 60,
+      borderRadius: 5,
+      marginRight: 8,
     },
   });
 }

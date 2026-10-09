@@ -9,7 +9,7 @@ import {
 import { useState, useEffect, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { wordsLearningActions } from "../../store/wordsLearningSlice";
-
+import * as ImagePicker from "expo-image-picker";
 import { getWordInfo } from "../../services/wordsHandler";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { playSound } from "../../services/soundHandler";
@@ -20,9 +20,13 @@ function AddWord({ navigation }) {
   const colors = useSelector((state) => state.theme.colors);
   const styles = useMemo(() => getStyles(colors), [colors]);
   const dispatch = useDispatch();
+  const [image, setImage] = useState();
+  const [permissionResponse, requestPermission] =
+    ImagePicker.useMediaLibraryPermissions();
 
   function onChangeText(text) {
     setWordData(undefined);
+    setImage(undefined);
     setText(text);
   }
 
@@ -44,10 +48,36 @@ function AddWord({ navigation }) {
   }, [navigation, wordData]);
 
   function onAdd() {
-    dispatch(wordsLearningActions.addWord(wordData));
+    dispatch(
+      wordsLearningActions.addWord({
+        ...wordData,
+        image,
+      }),
+    );
+
     navigation.navigate("AllWords");
   }
+  async function onPickImage() {
+    if (!wordData?.word) return;
 
+    let permission = permissionResponse;
+
+    if (!permission?.granted) {
+      permission = await requestPermission();
+    }
+
+    if (!permission?.granted) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+
+    if (!result.canceled && result.assets?.length > 0) {
+      setImage(result.assets[0].uri);
+    }
+  }
   return (
     <>
       <View style={styles.inputContainer}>
@@ -60,6 +90,17 @@ function AddWord({ navigation }) {
           placeholderTextColor={colors.grey600}
         />
       </View>
+      <Pressable
+        onPress={onPickImage}
+        disabled={!wordData?.word}
+        style={styles.imagePicker}
+      >
+        {image ? (
+          <Image source={{ uri: image }} style={styles.previewImage} />
+        ) : (
+          <Text style={styles.imagePlaceholder}>No image taken yet.</Text>
+        )}
+      </Pressable>
       {wordData && (
         <View style={styles.receivedInfoContainer}>
           <View style={{ flexDirection: "row", alignItems: "baseline" }}>
@@ -158,6 +199,27 @@ function getStyles(colors) {
     },
     playPressable: {
       marginHorizontal: 20,
+    },
+    imagePicker: {
+      height: 180,
+      marginHorizontal: 12,
+      marginTop: 12,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: colors.primary200,
+      borderRadius: 5,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    },
+    previewImage: {
+      width: "100%",
+      height: "100%",
+      resizeMode: "cover",
+    },
+    imagePlaceholder: {
+      fontSize: 16,
+      color: colors.grey600,
     },
   });
 }

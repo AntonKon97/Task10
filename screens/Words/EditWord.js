@@ -4,7 +4,10 @@ import {
   TextInput,
   Text,
   Pressable,
+  Image,
 } from "react-native";
+
+import * as ImagePicker from "expo-image-picker";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { playSound } from "../../services/soundHandler";
 import { useState, useMemo } from "react";
@@ -16,12 +19,35 @@ function EditWord({ route, navigation }) {
   const colors = useSelector((state) => state.theme.colors);
   const styles = useMemo(() => getStyles(colors), [colors]);
   const dispatch = useDispatch();
+  const [permissionResponse, requestPermission] =
+    ImagePicker.useMediaLibraryPermissions();
+
+  async function onPickImage() {
+    let permission = permissionResponse;
+
+    if (!permission?.granted) {
+      permission = await requestPermission();
+    }
+
+    if (!permission?.granted) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+
+    if (!result.canceled && result.assets?.length > 0) {
+      setWordData((prevData) => ({
+        ...prevData,
+        image: result.assets[0].uri,
+      }));
+    }
+  }
 
   function onSave() {
     dispatch(wordsLearningActions.updateWord(wordData));
-    navigation.navigate(
-      "AllWords"
-    );
+    navigation.navigate("AllWords");
   }
 
   function onChangeWordData(text, propName) {
@@ -31,6 +57,16 @@ function EditWord({ route, navigation }) {
   return (
     <>
       <View style={styles.receivedInfoContainer}>
+        <Pressable onPress={onPickImage} style={styles.imagePicker}>
+          {wordData.image ? (
+            <Image
+              source={{ uri: wordData.image }}
+              style={styles.previewImage}
+            />
+          ) : (
+            <Text style={styles.imagePlaceholder}>No image taken yet.</Text>
+          )}
+        </Pressable>
         <View style={{ flexDirection: "row", alignItems: "baseline" }}>
           <Text style={styles.word}>{wordData.word}</Text>
           {wordData.audio && (
@@ -147,6 +183,25 @@ function getStyles(colors) {
     },
     playPressable: {
       marginHorizontal: 20,
+    },
+    imagePicker: {
+      height: 180,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: colors.primary200,
+      borderRadius: 5,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    },
+    previewImage: {
+      width: "100%",
+      height: "100%",
+      resizeMode: "cover",
+    },
+    imagePlaceholder: {
+      fontSize: 16,
+      color: colors.grey600,
     },
   });
 }
